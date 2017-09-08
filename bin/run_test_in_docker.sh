@@ -35,9 +35,9 @@ chmod +x src/test/tmp/docker-script.sh
 mkdir -p src/test/results
 docker run \
   --rm \
-  --volume "$(pwd)/src/test:/test:ro" \
-  --volume "$(pwd)/src/test/results:/results" \
+  --volume //c/Users/fyu/GIT/GIBS/onearth/src/test:/test:ro \
+  --volume //c/Users/fyu/GIT/GIBS/onearth/src/test/results:/results \
   "$DOCKER_IMAGE" \
-  /test/tmp/docker-script.sh
+  //test/tmp/docker-script.sh
 
 rm src/test/tmp/docker-script.sh

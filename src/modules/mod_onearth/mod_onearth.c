@@ -69,6 +69,8 @@
 #include <unistd.h>
 #include <math.h>
 
+#include "mod_wmts_wrapper.h"
+
 // Use APLOG_WARNING APLOG_DEBUG or APLOG_ERR.  Sets the level for the "Unhandled .." 
 #define LOG_LEVEL APLOG_ERR
 
@@ -366,7 +368,7 @@ static void *r_file_pread(request_rec *r, char *fname,
   char *new_uri = 0;
   int max_size = 0;
   if (r->prev != 0) {
-  			if (ap_strstr(r->prev->args, "&MAP=") != 0) {
+  			if (r->prev->args && ap_strstr(r->prev->args, "&MAP=") != 0) {
 				layer = (char *) apr_table_get(r->prev->notes, "oems_clayer");
 				layers = (char *) apr_table_get(r->prev->notes, "oems_layers");
 				prev_time = (char *) apr_table_get(r->prev->notes, "oems_time");
@@ -597,7 +599,7 @@ static void *r_file_pread(request_rec *r, char *fname,
 	  }
   } else {
 	  if (r->prev != 0) {
-			if (ap_strstr(r->prev->args, "&MAP=") != 0) { // no time-snapping for Mapserver, so redirect back
+			if (r->prev->args && ap_strstr(r->prev->args, "&MAP=") != 0) { // no time-snapping for Mapserver, so redirect back
 				new_uri = apr_psprintf(r->pool, "%s?TIME=%s&%s", r->prev->uri, prev_time, r->prev->args);
 				ap_internal_redirect(new_uri, r);
 			}
@@ -968,7 +970,7 @@ static const char *cache_dir_set(cmd_parms *cmd,void *dconf, const char *arg)
  	cfg->meta[count].mime_type=apr_pstrdup(cfg->p,"image/tiff");
       else if (ap_find_token(cfg->p,cache->prefix,"lerc"))
  	cfg->meta[count].mime_type=apr_pstrdup(cfg->p,"image/lerc");
-      else if (ap_find_token(cfg->p,cache->prefix,"x-protobuf"))
+      else if (ap_find_token(cfg->p,cache->prefix,"x-protobuf;type=mapbox-vector"))
  	cfg->meta[count].mime_type=apr_pstrdup(cfg->p,"application/x-protobuf;type=mapbox-vector");
       else if (ap_find_token(cfg->p,cache->prefix,"vnd.mapbox-vector-tile"))
  	cfg->meta[count].mime_type=apr_pstrdup(cfg->p,"application/vnd.mapbox-vector-tile");
@@ -1676,6 +1678,9 @@ char *order_args(request_rec *r) {
 	//use size of request args to prevent memory errors
 	max_chars = strlen(r->args) + 1;
 
+	// valid formats
+	char * formats [] = { "image%2Fpng", "image%2Fjpeg", "image%2Ftiff", "image%2Flerc", "application%2Fx-protobuf;type=mapbox-vector"};
+
 	// common args
 	char *service = apr_pcalloc(r->pool,max_chars);
 	char *request = apr_pcalloc(r->pool,max_chars);
@@ -1710,12 +1715,6 @@ char *order_args(request_rec *r) {
 	} else if (ap_strcasecmp_match(format, "application/x-protobuf;type=mapbox-vector") == 0) {
 		strcpy(format,"application%2Fx-protobuf;type=mapbox-vector");
 		ap_set_content_type(r,"application/x-protobuf;type=mapbox-vector");
-	} else if (ap_strcasecmp_match(format, "application/x-protobuf") == 0) {
-		strcpy(format,"application%2Fx-protobuf;type=mapbox-vector");
-		ap_set_content_type(r,"application/x-protobuf;type=mapbox-vector");
-	} else if (ap_strcasecmp_match(format, "application%2Fx-protobuf") == 0) {
-		strcpy(format,"application%2Fx-protobuf;type=mapbox-vector");
-		ap_set_content_type(r,"application/x-protobuf;type=mapbox-vector");
 	} else if (ap_strcasecmp_match(format, "application/vnd.mapbox-vector-tile") == 0) {
 		strcpy(format,"application%2Fx-protobuf;type=mapbox-vector");
 		ap_set_content_type(r,"application/vnd.mapbox-vector-tile");
@@ -1723,6 +1722,22 @@ char *order_args(request_rec *r) {
 		strcpy(format,"application%2Fx-protobuf;type=mapbox-vector");
 		ap_set_content_type(r,"application/vnd.mapbox-vector-tile");
 	}
+
+	// make sure there are no extra characters in format
+	if (format[0] != NULL) {
+		int formats_len = sizeof(formats)/sizeof(formats[0]);
+		int f;
+		int f_match = 0;
+		for(f = 0; f < formats_len; ++f) {
+			if(!strcmp(formats[f], format)) {
+				f_match++;
+			}
+		}
+		if (f_match == 0) {
+			wmts_add_error(r,400,"InvalidParameterValue","FORMAT", "FORMAT is invalid");
+		}
+	}
+
 	// handle colons
 	if (ap_strchr(time, ':') != 0) {
 		int i; i= 0;
@@ -1935,10 +1950,14 @@ static int specify_error(request_rec *r)
 	}
 	else if (layer_match==0) {
 		layer_mes = apr_psprintf(r->pool, "LAYER does not exist");
-		// If OnEarth can't handle this layer and this endpoint 
-		if (apr_table_get(r->notes, "mod_wmts_wrapper_enabled")) {
-			r->args = args_backup;
-			return 0;
+		// If OnEarth can't handle this layer and mod_wmts_wrapper is active on this endpoint, let the request pass through.
+		module *wmts_wrapper_module = (ap_find_linked_module("mod_wmts_wrapper.cpp"));
+		if (wmts_wrapper_module) {
+			wmts_wrapper_conf *wmts_wrapper_config = ap_get_module_config(r->per_dir_config, wmts_wrapper_module);
+			if (wmts_wrapper_config->role) {
+				r->args = args_backup;
+				return 0;				
+			}
 		}
 		wmts_add_error(r,400,"InvalidParameterValue","LAYER", layer_mes);
 	}

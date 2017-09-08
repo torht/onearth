@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #Projections and their EPSG equivalents
-declare -a PROJECTIONS=(geo webmerc arctic antarctic)
+declare -a PROJECTIONS=(epsg4326 epsg3857 epsg3413 epsg3031)
 declare -a PROJEPSGS=(EPSG4326 EPSG3857 EPSG3413 EPSG3031)
 
 #Download image files
@@ -19,7 +19,7 @@ do
 	mkdir -p /usr/share/onearth/demo/generated_mrfs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}/{source_images,working_dir,logfile_dir,output_dir,empty_tiles}
 	/bin/cp /usr/share/onearth/demo/source_images/blue_marble.* /usr/share/onearth/demo/generated_mrfs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}/source_images/
 	/bin/cp /usr/share/onearth/demo/mrf_configs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}_config.xml /usr/share/onearth/demo/generated_mrfs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}/
-	/bin/cp /usr/share/onearth/demo/examples/default/wmts-geo/black.jpg /usr/share/onearth/demo/generated_mrfs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}/empty_tiles/
+	/bin/cp /usr/share/onearth/demo/examples/default/wmts/epsg4326/black.jpg /usr/share/onearth/demo/generated_mrfs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}/empty_tiles/
 	cd /usr/share/onearth/demo/generated_mrfs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}/
 
 	mrfgen -c /usr/share/onearth/demo/generated_mrfs/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}/blue_marble_${MARBLE_PROJECTIONS[$INDEX]}_config.xml
@@ -39,7 +39,7 @@ do
 	mkdir -p /usr/share/onearth/demo/generated_mrfs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}/{source_images,working_dir,logfile_dir,output_dir,empty_tiles}
 	/bin/cp /usr/share/onearth/demo/source_images/MYR4ODLOLLDY_global_2014277_10km.* /usr/share/onearth/demo/generated_mrfs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}/source_images/
 	/bin/cp /usr/share/onearth/demo/mrf_configs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}_config.xml /usr/share/onearth/demo/generated_mrfs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}/
-	/bin/cp /usr/share/onearth/demo/examples/default/wmts-geo/transparent.png /usr/share/onearth/demo/generated_mrfs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}/empty_tiles/
+	/bin/cp /usr/share/onearth/demo/examples/default/wmts/epsg4326/transparent.png /usr/share/onearth/demo/generated_mrfs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}/empty_tiles/
 	cd /usr/share/onearth/demo/generated_mrfs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}/
 
 	mrfgen -c /usr/share/onearth/demo/generated_mrfs/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}/MYR4ODLOLLDY_global_2014277_10km_${MODIS_PROJECTIONS[$INDEX]}_config.xml
@@ -122,37 +122,20 @@ done
 mkdir -p /etc/onearth/config/styles
 /bin/cp /usr/share/onearth/demo/styles/* /etc/onearth/config/styles
 
-chmod +x /usr/share/onearth/demo/examples/default/wms/wms.cgi
-
-mkdir -p /usr/share/onearth/demo/examples/default/wms
-mkdir -p /usr/share/onearth/demo/examples/default/wfs
-mkdir -p /usr/share/onearth/demo/examples/default/wms/epsg4326
-mkdir -p /usr/share/onearth/demo/examples/default/wfs/epsg4326
-mkdir -p /usr/share/onearth/demo/examples/default/wms/epsg3857
-mkdir -p /usr/share/onearth/demo/examples/default/wfs/epsg3857
-mkdir -p /usr/share/onearth/demo/examples/default/wms/epsg3031
-mkdir -p /usr/share/onearth/demo/examples/default/wfs/epsg3031
-mkdir -p /usr/share/onearth/demo/examples/default/wms/epsg3413
-mkdir -p /usr/share/onearth/demo/examples/default/wfs/epsg3413
-
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wms/epsg4326
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wms/epsg3857
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wms/epsg3031
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wms/epsg3413
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wfs/epsg4326/wfs.cgi
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wfs/epsg3857/wfs.cgi
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wfs/epsg3031/wfs.cgi
-/bin/cp /usr/share/onearth/demo/examples/default/wms/wms.cgi /usr/share/onearth/demo/examples/default/wfs/epsg3413/wfs.cgi
-
 #Compile the KML script and copy to TWMS dirs
 cd /usr/share/onearth/apache/kml
 for PROJECTION in "${PROJECTIONS[@]}"
 do
-	 make WEB_HOST=localhost:$HOST_PORT/onearth/demo/examples/default/twms/$PROJECTION
-	 /bin/cp kmlgen.cgi /usr/share/onearth/demo/examples/default/twms-$PROJECTION
+	 make WEB_HOST=localhost:${HOST_PORT:-80}/onearth/twms/$PROJECTION
+	 /bin/cp kmlgen.cgi /usr/share/onearth/demo/examples/default/twms/$PROJECTION/kmlgen.cgi
 	 rm -f kmlgen.cgi
 done
 
+#Activate index.html and cache configurations
+/bin/cp /usr/share/onearth/demo/examples/default/index.html.sample /usr/share/onearth/demo/examples/default/index.html
+sed -i 's/#WMSCache/WMSCache/g' /etc/httpd/conf.d/onearth-demo.conf
+
 #Copy layer config files, run config tool
 /bin/cp /usr/share/onearth/demo/layer_configs/* /etc/onearth/config/layers/
-LCDIR=/etc/onearth/config oe_configure_layer --create_mapfile --layer_dir=/etc/onearth/config/layers/ --skip_empty_tiles --generate_links --restart_apache
+LCDIR=/etc/onearth/config oe_configure_layer --create_mapfile --layer_dir=/etc/onearth/config/layers/ --skip_empty_tiles --generate_links
+/usr/sbin/httpd -k restart
